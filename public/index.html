@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Primetrade.ai - Login</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container" id="login-form">
+        <h2>Welcome Back</h2>
+        <p class="subtitle">Sign in to your account to continue</p>
+        
+        <input type="email" id="login-email" placeholder="Email Address" required>
+        <input type="password" id="login-password" placeholder="Password" required>
+        
+        <div id="login-error" class="error" style="display:none;"></div>
+        
+        <button onclick="login()" class="btn-primary">Sign In</button>
+        
+        <button onclick="toggleForms()" class="btn-link">Don't have an account? Register</button>
+    </div>
+
+    <div class="container" id="register-form" style="display:none;">
+        <h2>Create Account</h2>
+        <p class="subtitle">Start managing your tasks efficiently</p>
+        
+        <input type="text" id="reg-username" placeholder="Full Name" required>
+        <input type="email" id="reg-email" placeholder="Email Address" required>
+        <input type="password" id="reg-password" placeholder="Create Password" required>
+        
+        <div style="margin-bottom: 16px;">
+            <label style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 8px; display: block;">Select Role:</label>
+            <select id="reg-role">
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
+            </select>
+        </div>
+
+        <div id="reg-error" class="error" style="display:none;"></div>
+        <div id="reg-success" class="success" style="display:none;"></div>
+        
+        <button onclick="register()" class="btn-primary">Create Account</button>
+        <button onclick="toggleForms()" class="btn-link">Already have an account? Login</button>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api';
+
+        function toggleForms() {
+            const login = document.getElementById('login-form');
+            const reg = document.getElementById('register-form');
+            if (login.style.display === 'none') {
+                login.style.display = 'block';
+                reg.style.display = 'none';
+            } else {
+                login.style.display = 'none';
+                reg.style.display = 'block';
+            }
+            clearMessages();
+        }
+
+        function clearMessages() {
+            document.getElementById('login-error').style.display = 'none';
+            document.getElementById('reg-error').style.display = 'none';
+            document.getElementById('reg-success').style.display = 'none';
+        }
+
+        function showError(elementId, message) {
+            const el = document.getElementById(elementId);
+            el.innerText = message;
+            el.style.display = 'block';
+        }
+
+        async function register() {
+            clearMessages();
+            const username = document.getElementById('reg-username').value;
+            const email = document.getElementById('reg-email').value;
+            const password = document.getElementById('reg-password').value;
+            const role = document.getElementById('reg-role').value;
+
+            try {
+                const res = await fetch(`${API_URL}/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password, role })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    const el = document.getElementById('reg-success');
+                    el.innerText = "Account created! Redirecting...";
+                    el.style.display = 'block';
+                    setTimeout(toggleForms, 1500);
+                } else {
+                    showError('reg-error', data.message || "Registration failed");
+                }
+            } catch (err) {
+                showError('reg-error', "Network error");
+            }
+        }
+
+        async function login() {
+            clearMessages();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            try {
+                const res = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    
+                    window.location.href = data.user.role === 'admin' ? 'admin.html' : 'dashboard.html';
+                } else {
+                    showError('login-error', data.message || "Invalid credentials");
+                }
+            } catch (err) {
+                showError('login-error', "Network error");
+            }
+        }
+    </script>
+</body>
+</html>

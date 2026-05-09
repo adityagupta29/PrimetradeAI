@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container wide">
+        <div class="nav">
+            <h3>👋 Hello, <span id="username">User</span></h3>
+            <button onclick="logout()" class="btn-secondary">Logout</button>
+        </div>
+        
+        <h2 style="text-align:left; margin-bottom:20px;">Task Manager</h2>
+        
+        <!-- Add Task Box -->
+        <div class="add-task-box">
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <div style="flex: 2; min-width: 200px;">
+                    <input type="text" id="task-title" placeholder="Task Title" style="margin-bottom:0;">
+                </div>
+                <div style="flex: 3; min-width: 200px;">
+                    <input type="text" id="task-desc" placeholder="Description (Optional)" style="margin-bottom:0;">
+                </div>
+                <div style="flex: 1; min-width: 100px;">
+                    <button onclick="createTask()" class="btn-primary">Add Task</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Task List -->
+        <div id="task-list" class="task-list">
+            <!-- Tasks injected here -->
+            <p style="text-align:center; color:var(--text-muted); margin-top:40px;">Loading tasks...</p>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api';
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user'));
+
+        if (!token) window.location.href = 'index.html';
+        document.getElementById('username').innerText = user.username;
+
+        async function getTasks() {
+            try {
+                const res = await fetch(`${API_URL}/tasks`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.status === 401) return logout();
+                
+                const tasks = await res.json();
+                const list = document.getElementById('task-list');
+                list.innerHTML = '';
+                
+                if (tasks.length === 0) {
+                    list.innerHTML = `<p style="text-align:center; color:var(--text-muted); margin-top:20px;">No tasks found. Create one above!</p>`;
+                    return;
+                }
+
+                tasks.forEach(task => {
+                    list.innerHTML += `
+                        <div class="task-card">
+                            <div class="task-info">
+                                <h4>${task.title} <span class="task-tag">${task.status}</span></h4>
+                                <p>${task.description || 'No description'}</p>
+                            </div>
+                            <button onclick="deleteTask(${task.id})" class="btn-danger">Delete</button>
+                        </div>
+                    `;
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function createTask() {
+            const title = document.getElementById('task-title').value;
+            const description = document.getElementById('task-desc').value;
+            if(!title) return alert("Title required");
+
+            await fetch(`${API_URL}/tasks`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ title, description })
+            });
+            document.getElementById('task-title').value = '';
+            document.getElementById('task-desc').value = '';
+            getTasks();
+        }
+
+        async function deleteTask(id) {
+            if(!confirm("Delete this task?")) return;
+            await fetch(`${API_URL}/tasks/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            getTasks();
+        }
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = 'index.html';
+        }
+
+        getTasks();
+    </script>
+</body>
+</html>
